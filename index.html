@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Year Task</title>
+    <style>
+        body {
+            position: relative;
+            overflow: hidden;
+            background: url(https://i.ytimg.com/vi/h7LeqJWnx-I/maxresdefault.jpg);
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+        .lever{
+            background: #423b3b;
+            border-radius: 50%;
+            box-shadow: 0.375em 0.375em 0 0 rgba(15, 28, 63, 0.125);
+            height: 2.4em;
+            width: 2.4em;
+            margin-right: 11px;
+        }
+        .changeBackground{
+            background: #ffffff;
+        }
+        .wrapper{
+            position: absolute;
+            top: 619px;
+            right: 49px;
+            display: flex;
+            flex-direction: row;
+            justify-content: end;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="lever"></div>
+        <div class="lever"></div>
+        <div class="lever"></div>
+        <div class="lever"></div>
+    </div>
+
+</body>
+<script>
+    const levers = document.querySelectorAll('.lever');
+    const ws = new WebSocket('ws://vps.yojji.io', 'egor_guzenko');
+
+    let arrOfLevers = [false,false,false,false];
+    
+    const backgroundRender = () => {
+      levers.forEach((lever, i) => {
+        lever.classList.toggle('changeBackground', arrOfLevers[i]);
+      });
+    }
+
+    ws.onopen = () => console.log('opened');
+    ws.onclose = () => console.log('close');
+
+    ws.onmessage = function(response) {
+
+      if (JSON.parse(response.data).token) {
+        ws.close();
+        document.querySelector('.wrapper').style.display = 'none';
+        document.body.style.background = 'url(https://c.tenor.com/MCxWfEDnCysAAAAC/biathlon-jump.gif)';
+        document.body.style.backgroundRepeat = 'no-repeat';
+        document.body.style.backgroundSize = 'cover';
+        console.log(JSON.parse(response.data).token);
+        return;
+      };
+
+      if (JSON.parse(response.data).newState) {
+        arrOfLevers = arrOfLevers.map(item => !item);
+      }
+
+      if (arrOfLevers.every(item => item)) {
+        ws.send(JSON.stringify({
+            action: "powerOff",
+            stateId: JSON.parse(response.data).stateId
+            }));
+      }
+
+      if ('pulled' in JSON.parse(response.data)) {
+        arrOfLevers[JSON.parse(response.data).pulled] = !arrOfLevers[JSON.parse(response.data).pulled];
+    
+        ws.send(JSON.stringify({
+            action: "check",
+             "lever1": 0, 
+             "lever2": JSON.parse(response.data).pulled, 
+             stateId: JSON.parse(response.data).stateId
+            }));
+      }
+
+      if ("action" in JSON.parse(response.data)) {
+        arrOfLevers[JSON.parse(response.data).lever2] = JSON.parse(response.data).same ?  arrOfLevers[0] : !arrOfLevers[0];
+      }
+
+      backgroundRender();
+    };
+</script>
+</html>
